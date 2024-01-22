@@ -76,7 +76,9 @@ fun MainMenu(navController: NavController) {
         }
             FloatingActionButton(onClick = {
                 navController.navigate("LogIn") {
-
+                    popUpTo("LogIn"){
+                        inclusive = true
+                    }
                 }
             }
             ) {

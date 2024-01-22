@@ -81,7 +81,11 @@ fun UserBox(navController: NavController) {
                 label = {Text("Enter password")}
             )
             Button(onClick = {
-                navController.navigate("MainMenu")
+                navController.navigate("MainMenu"){
+                    popUpTo("MainMenu"){
+                        inclusive = true
+                    }
+                }
             }
             ){
                 Text(text = "Log In")
