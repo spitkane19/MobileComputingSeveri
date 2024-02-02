@@ -52,6 +52,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -74,6 +75,9 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
+import kotlinx.coroutines.android.awaitFrame
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 
@@ -138,16 +142,22 @@ fun MainMenu(navController: NavController) {
 
 @Composable
 fun Profile(context: Context) {
-    var imageFileName by remember { mutableStateOf("image") }
+    var imageFileName by remember { mutableStateOf(loadImageFileName(context)) }
+    var desc by remember { mutableStateOf("desc") }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri: Uri? ->
             uri?.let {
-                // Save the image with the constant filename "image"
-                saveImageUri(context, uri, imageFileName)
-                // Update the imageFileName to trigger recomposition
-                imageFileName = "image"
+                // Save the image with the generated unique filename
+                val uniqueFileName = generateUniqueFileName(uri)
+                saveImageUri(context, uri, uniqueFileName)
+
+                // Save the URI to SharedPreferences
+                saveImageUriToPrefs(context, uniqueFileName)
+
+                // Update the imageFileName to use the generated filename
+                imageFileName = uniqueFileName
             }
         }
     )
@@ -155,7 +165,7 @@ fun Profile(context: Context) {
     Row(modifier = Modifier.padding(all = 8.dp)) {
         Image(
             painter = rememberAsyncImagePainter(File(context.filesDir, imageFileName)),
-            contentDescription = null,
+            contentDescription = desc,
             modifier = Modifier
                 .size(80.dp)
                 .clip(CircleShape)
@@ -174,6 +184,12 @@ fun Profile(context: Context) {
         }
     }
 }
+
+fun generateUniqueFileName(uri: Uri): String {
+    val timeStamp = System.currentTimeMillis()
+    return "${uri.lastPathSegment}_$timeStamp"
+}
+
 fun saveImageUri(context: Context, uri: Uri, fileName: String) {
     val inputStream = context.contentResolver.openInputStream(uri)
     val outputStream = context.openFileOutput(fileName, Context.MODE_PRIVATE)
@@ -184,6 +200,17 @@ fun saveImageUri(context: Context, uri: Uri, fileName: String) {
     }
 }
 
+fun saveImageUriToPrefs(context: Context, fileName: String) {
+    val prefs = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+    val editor = prefs.edit()
+    editor.putString("imageUri", fileName)
+    editor.apply()
+}
+
+fun loadImageFileName(context: Context): String {
+    val prefs = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+    return prefs.getString("imageUri", "image") ?: "image"
+}
 
 
 
