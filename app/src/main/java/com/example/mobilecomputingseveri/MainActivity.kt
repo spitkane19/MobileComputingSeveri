@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 @Composable
 fun UserBox(navController: NavController) {
     var text by remember { mutableStateOf("") }
