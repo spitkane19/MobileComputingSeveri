@@ -1,9 +1,10 @@
 package com.example.mobilecomputingseveri
-
+import com.example.mobilecomputingseveri.ProfileViewModel
 
 import android.content.Context
 
 import android.net.Uri
+import android.util.Log
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 
@@ -41,13 +42,16 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextField
 
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+
 
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,7 +61,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-import androidx.compose.ui.text.font.FontStyle
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 
@@ -73,7 +77,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Profile(navController: NavController) {
+fun ProfilePage(navController: NavController, profileViewModel: ProfileViewModel) {
     val context = LocalContext.current
 
     Scaffold(
@@ -89,27 +93,17 @@ fun Profile(navController: NavController) {
             )
         },
 
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                navController.navigate("LogIn") {
-                    popUpTo("LogIn") {
-                        inclusive = true
-                    }
-                }
-            }
-            ){
-                Text("LogOut", fontStyle = FontStyle.Italic, fontSize = 25.sp)
-            }
 
 
-        }
+
+
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ){
-            Profile(context)
+            Profile(context, profileViewModel)
             Button(onClick = {
                 navController.navigate("MainMenu"){
                     popUpTo("MainMenu"){
@@ -128,32 +122,14 @@ fun Profile(navController: NavController) {
 }
 
 @Composable
-fun Profile(context: Context) {
-    var imageFileName by remember { mutableStateOf(loadImageFileName(context)) }
-    var desc by remember { mutableStateOf("desc") }
-    var userName by remember { mutableStateOf("Severi") }
+fun Profile(context: Context, profileViewModel: ProfileViewModel) {
 
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri: Uri? ->
-            uri?.let {
-                // Save the image with the generated unique filename
-                val uniqueFileName = generateUniqueFileName(uri)
-                saveImageUri(context, uri, uniqueFileName)
 
-                // Save the URI to SharedPreferences
-                saveImageUriToPrefs(context, uniqueFileName)
-
-                // Update the imageFileName to use the generated filename
-                imageFileName = uniqueFileName
-            }
-        }
-    )
 
     Row() {
         Column(
             modifier = Modifier
-                .padding(vertical = 10.dp) // Add padding to vertically center the text
+                .padding(vertical = 10.dp)
                 .fillMaxWidth()
         ) {
             Text(
@@ -172,43 +148,28 @@ fun Profile(context: Context) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(color = Color.LightGray) // Set the background color here
+                .background(color = Color.LightGray)
         ) {
             Row(
                 modifier = Modifier
                     .padding(horizontal = 100.dp)
             ){
-            Image(
-                painter = rememberAsyncImagePainter(File(context.filesDir, imageFileName)),
-                contentDescription = desc,
-                modifier = Modifier
-                    .size(200.dp)
-                    .clip(CircleShape)
-                    .clickable {
-                        photoPickerLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    }
-            )
+
+                loadImageFileName(context,profileViewModel)
+
         }
+
     }
 
         Spacer(modifier = Modifier.width(8.dp))
 
+        loadUsername(context,profileViewModel)
 
-    Column {
-        TextField(
-            value = userName,
-            onValueChange = { userName = it },
-            label = { Text("Username", fontWeight = FontWeight.Bold) },
-            keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Done
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-        )
-    }
+
+
+
+
+
 }
 fun generateUniqueFileName(uri: Uri): String {
     val timeStamp = System.currentTimeMillis()
@@ -224,15 +185,115 @@ fun saveImageUri(context: Context, uri: Uri, fileName: String) {
         }
     }
 }
-
-fun saveImageUriToPrefs(context: Context, fileName: String) {
-    val prefs = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
-    val editor = prefs.edit()
-    editor.putString("imageUri", fileName)
-    editor.apply()
+fun saveImageToDatabase(context: Context, fileName: String, profileViewModel: ProfileViewModel){
+    profileViewModel.updatePictureData(1, fileName)
+}
+fun saveUsernameToDatabase(context: Context, username: String, profileViewModel: ProfileViewModel){
+    profileViewModel.updateUserName(1, username)
 }
 
-fun loadImageFileName(context: Context): String {
-    val prefs = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
-    return prefs.getString("imageUri", "image") ?: "image"
+
+@Composable
+fun loadImageFileName(context: Context, profileViewModel: ProfileViewModel) {
+    val pictureData: String? by profileViewModel.pictureData.observeAsState()
+    var photoPickerResult by remember { mutableStateOf<Uri?>(null) }
+
+    DisposableEffect(pictureData, photoPickerResult) {
+        profileViewModel.getPictureDataByProfileId(1)
+
+        onDispose {
+            // Cleanup if needed
+        }
+    }
+
+    val desc by remember { mutableStateOf("desc") }
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri: Uri? ->
+            uri?.let {
+                val uniqueFileName = generateUniqueFileName(uri)
+                saveImageUri(context, uri, uniqueFileName)
+                saveImageToDatabase(context, uniqueFileName, profileViewModel)
+                photoPickerResult = uri
+            }
+        }
+    )
+
+    // Check if pictureData is null or empty
+    if (pictureData.isNullOrEmpty()) {
+
+        Spacer(
+        modifier = Modifier
+            .size(200.dp)
+            .clip(CircleShape)
+            .clickable {
+                photoPickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
+        )
+    } else {
+        // Draw the image using the pictureData
+        Image(
+            painter = rememberAsyncImagePainter(File(context.filesDir, pictureData)),
+            contentDescription = desc,
+            modifier = Modifier
+                .size(200.dp)
+                .clip(CircleShape)
+                .clickable {
+                    photoPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
+        )
+    }
+}
+@Composable
+fun loadUsername(context: Context, profileViewModel: ProfileViewModel) {
+    val usernameData: String by profileViewModel.usernameData.observeAsState("")
+    var editableText by remember { mutableStateOf("") }
+
+    DisposableEffect(usernameData) {
+        profileViewModel.getUsernameByProfileId(1)
+
+
+        onDispose {
+        }
+    }
+
+    Column {
+        Text(
+            text = usernameData?: "DefaultUsername",
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentSize(Alignment.Center)
+        )
+
+        TextField(
+            value = editableText,
+            onValueChange = {
+                editableText = it
+            },
+            label = { Text("New username", fontWeight = FontWeight.Bold) },
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Done
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        Button(
+            onClick = {
+                saveUsernameToDatabase(context, editableText, profileViewModel)
+            },
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxWidth()
+        ) {
+            Text("Save new name")
+        }
+    }
 }

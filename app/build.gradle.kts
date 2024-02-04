@@ -2,6 +2,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("com.google.dagger.hilt.android")
+
 }
 
 android {
@@ -50,11 +52,17 @@ android {
 dependencies {
     val navVersion = "2.7.6"
     val room_version = "2.6.1"
+    val hilt_version = "2.48"
     implementation("androidx.room:room-runtime:$room_version")
     annotationProcessor("androidx.room:room-compiler:$room_version")
+    implementation("androidx.compose.runtime:runtime-livedata:1.6.0")
 
     // To use Kotlin Symbol Processing (KSP)
-    ksp("androidx.room:room-compiler:$room_version")
+    ksp("androidx.room:room-compiler:2.6.1")
+    ksp("com.google.dagger:dagger-compiler:2.48.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.48.1")
+    implementation("com.google.dagger:hilt-android:2.48.1")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
     // optional - Kotlin Extensions and Coroutines support for Room
     implementation("androidx.room:room-ktx:$room_version")
@@ -67,6 +75,9 @@ dependencies {
 
     // optional - Guava support for Room, including Optional and ListenableFuture
     implementation("androidx.room:room-guava:$room_version")
+
+
+
 
     // optional - Test helpers
     testImplementation("androidx.room:room-testing:$room_version")

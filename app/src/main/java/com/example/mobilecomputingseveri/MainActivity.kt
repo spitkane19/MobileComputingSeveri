@@ -3,6 +3,7 @@ package com.example.mobilecomputingseveri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,24 +31,27 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import dagger.hilt.android.AndroidEntryPoint
 
 
-
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val profileViewModel: ProfileViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val navController = rememberNavController()
             NavHost(navController = navController, startDestination = "LogIn") {
                 composable("LogIn") {
-                    UserBox(navController)
+                    UserBox(navController, profileViewModel)
 
                 }
                 composable("MainMenu") {
-                    MainMenu(navController)
+                    MainMenu(navController, profileViewModel)
                 }
-                composable("Profile"){
-                    Profile(navController)
+                composable("ProfilePage"){
+                    ProfilePage(navController, profileViewModel)
                 }
 
             }
@@ -56,7 +60,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun UserBox(navController: NavController) {
+fun UserBox(navController: NavController, profileViewModel: ProfileViewModel) {
     var text by remember { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     Row{
